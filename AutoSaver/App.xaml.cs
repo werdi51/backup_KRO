@@ -14,16 +14,21 @@ namespace AutoSaver
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            // Проверяем, есть ли аргумент "-run"
+            // Отключаем автоматический выход при закрытии окон, пока не решим сами
+            this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
             if (e.Args.Contains("-run"))
             {
                 RunSilentBackup();
-                Shutdown(); // Закрываем программу сразу после работы
+                this.Shutdown();
             }
             else
             {
-                // Если аргументов нет, запускаем обычное окно
-                base.OnStartup(e);
+                // Возвращаем обычный режим: программа закроется, когда закроешь окно
+                this.ShutdownMode = ShutdownMode.OnLastWindowClose;
+
+                var mainWindow = new MainWindow();
+                mainWindow.Show();
             }
         }
 
@@ -35,27 +40,44 @@ namespace AutoSaver
             {
                 try
                 {
-                    // Загружаем настройки
                     string json = File.ReadAllText(settingsPath);
                     var settings = JsonSerializer.Deserialize<BackupSettings>(json);
 
                     if (settings != null)
                     {
-                        // Запускаем бэкап без интерфейса (логи пишем просто в консоль или игнорируем)
-                        BackupEngine.ExecuteBackup(settings, msg => Console.WriteLine(msg));
+                        // 1. ИСПРАВЛЕНО: Теперь создаем прогресс правильного типа
+                        // Мы используем BackupProgressData, но так как в тихом режиме интерфейса нет,
+                        // он просто будет принимать данные и ничего с ними не делать.
+                        var noProgress = new Progress<BackupProgressData>();
 
-                        // Сохраняем обновленные даты
+                        // 2. Вызываем асинхронный метод и ждем его завершения
+                        BackupEngine.ExecuteBackupAsync(
+                            settings,
+                            noProgress, // Теперь типы совпадают
+                            msg => Console.WriteLine(msg)
+                        ).Wait();
+
+                        // 3. Сохраняем обновленные даты
                         string updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                         File.WriteAllText(settingsPath, updatedJson);
+
+                        BackupEngine.ExecuteBackupAsync(...).Wait();
+
+                        // Показываем уведомление об успехе
+                        MessageBox.Show("Бэкап успешно завершен!", "AutoSaver",
+                                        MessageBoxButton.OK, MessageBoxImage.Information);
+
                     }
                 }
                 catch (Exception ex)
                 {
-                    // В тихом режиме ошибки лучше писать в лог-файл
                     File.AppendAllText("error_log.txt", $"{DateTime.Now}: {ex.Message}\n");
+                    MessageBox.Show($"Ошибка бэкапа: {ex.Message}", "AutoSaver - ОШИБКА",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
+
 
     }
 

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -6,11 +7,11 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.IO;
 using Path = System.IO.Path;
 
 namespace AutoSaver
@@ -89,30 +90,50 @@ namespace AutoSaver
             }
         }
 
-        private void BtnRunNow_Click(object sender, RoutedEventArgs e)
+        // Добавь async перед void
+        // BtnRunNow_Click в MainWindow.xaml.cs
+
+        private string FormatSize(long bytes)
         {
-            // Блокируем кнопку, чтобы пользователь не нажал дважды во время работы
+            double gb = bytes / 1024.0 / 1024.0 / 1024.0;
+            if (gb >= 1) return $"{gb:F2} ГБ";
+            double mb = bytes / 1024.0 / 1024.0;
+            return $"{mb:F2} МБ";
+        }
+        private async void BtnRunNow_Click(object sender, RoutedEventArgs e)
+        {
             BtnRunNow.IsEnabled = false;
-            TxtStatus.Text = "Запуск... Пожалуйста, подождите.";
+            TxtStatus.Clear();
+
+            var progress = new Progress<BackupProgressData>(data =>
+            {
+                PrgBar.Value = data.Percentage;
+                TxtPercent.Text = $"{data.Percentage:F1}%";
+                TxtSpeed.Text = $"{data.Speed:F2} МБ/с";
+                TxtTimer.Text = data.TimeElapsed;
+                TxtFileCount.Text = $"Файлов: {data.CurrentFileNumber} / {data.TotalFiles}";
+                TxtSizeProgress.Text = $"{FormatSize(data.CopiedBytes)} / {FormatSize(data.TotalBytes)}";
+            });
 
             try
             {
-                // Вызываем наш движок
-                // msg => TxtStatus.Text = msg — это способ передавать сообщения из движка прямо в интерфейс
-                BackupEngine.ExecuteBackup(_settings, msg => {
-                    TxtStatus.Text = msg;
-                });
+                await Task.Run(() => BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
+                    Dispatcher.Invoke(() => {
+                        // ДОБАВЛЯЕМ СТРОКУ, А НЕ ЗАМЕНЯЕМ
+                        TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}\n");
 
-                // После завершения бэкапа сохраняем обновленные даты (LastFullBackupDate и т.д.)
-                BtnSave_Click(null, null);
+                        // АВТО-СКРОЛЛ К ПОСЛЕДНЕЙ ЗАПИСИ
+                        TxtStatus.ScrollToEnd();
+                    })));
             }
             catch (Exception ex)
             {
-                TxtStatus.Text = $"Критическая ошибка: {ex.Message}";
+                TxtStatus.AppendText($"\n[ОШИБКА] {ex.Message}\n");
             }
             finally
             {
                 BtnRunNow.IsEnabled = true;
+                // Сброс показателей прогресса (как обсуждали раньше)
             }
         }
     }

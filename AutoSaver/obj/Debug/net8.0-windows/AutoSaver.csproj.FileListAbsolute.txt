@@ -18,3 +18,4 @@ C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows\refint\AutoS
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows\AutoSaver.pdb
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows\AutoSaver.genruntimeconfig.cache
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows\ref\AutoSaver.dll
+C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows\AutoSaver.sourcelink.json
