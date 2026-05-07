@@ -21,11 +21,19 @@ namespace AutoSaver
         // BackupEngine.ExecuteBackupAsync (исправленный)
         public static async Task ExecuteBackupAsync(BackupSettings settings, IProgress<BackupProgressData> progress, Action<string> logger)
         {
-
             SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
 
             try
             {
+                // ---------- ШАПКА СЕССИИ ----------
+                logger?.Invoke("==================================================");
+                logger?.Invoke($"СЕССИЯ БЭКАПА ОТ {DateTime.Now:dd.MM.yyyy HH:mm:ss}");
+                logger?.Invoke("==================================================");
+
+                var sessionSw = Stopwatch.StartNew();
+                long totalBytesCopied = 0;
+                int totalFilesCopied = 0;
+
                 // Проверка путей
                 if (string.IsNullOrEmpty(settings.SourcePath) || string.IsNullOrEmpty(settings.DestinationPath))
                 {
@@ -38,7 +46,6 @@ namespace AutoSaver
                     return;
                 }
 
-                // Создание папок назначения
                 string monthlyDir = Path.Combine(settings.DestinationPath, "Month_Full");
                 string dailyRootDir = Path.Combine(settings.DestinationPath, "Daily_Changes");
                 Directory.CreateDirectory(monthlyDir);
@@ -47,13 +54,13 @@ namespace AutoSaver
                 DateTime now = DateTime.Now;
 
                 // ========== 1. ПОЛНЫЙ БЭКАП (раз в месяц) ==========
-                bool needFull = settings.LastFullBackupDate.Month != now.Month || !Directory.EnumerateFileSystemEntries(monthlyDir).Any();
+                bool needFull = settings.LastFullBackupDate.Month != now.Month ||
+                                !Directory.EnumerateFileSystemEntries(monthlyDir).Any();
                 if (needFull)
                 {
                     logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Обновление полной копии месяца...");
                     ClearDirectory(monthlyDir);
 
-                    // Получаем все файлы с информацией
                     var allFiles = Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories)
                                             .Select(f => new FileInfo(f))
                                             .ToList();
@@ -66,64 +73,43 @@ namespace AutoSaver
                     for (int i = 0; i < fileCount; i++)
                     {
                         var fi = allFiles[i];
+                        if (fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
+                            continue;
+
                         try
                         {
-                            // Используем более надежный способ получения относительного пути
                             string relativePath = Path.GetRelativePath(settings.SourcePath, fi.FullName);
                             string destFile = Path.Combine(monthlyDir, relativePath);
-
                             Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
 
-                            // Само копирование
-                            await Task.Run(() => fi.CopyTo(destFile, true));
+                            bool copied = false;
+                            for (int attempt = 0; attempt < 3; attempt++)
+                            {
+                                try
+                                {
+                                    fi.CopyTo(destFile, true);
+                                    copied = true;
+                                    break;
+                                }
+                                catch (IOException) when (attempt < 2)
+                                {
+                                    await Task.Delay(5000);
+                                }
+                            }
+                            if (!copied)
+                            {
+                                logger?.Invoke($"[ПРОПУЩЕНО]: Файл {fi.Name} занят, не удалось скопировать после 3 попыток.");
+                                continue;
+                            }
 
                             copiedSize += fi.Length;
-                            // ... (твой код с progress?.Report) ...
-                            logger?.Invoke($"Сохранен: {relativePath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            logger?.Invoke($"Ошибка файла {fi.Name}: {ex.Message}");
-                            // Продолжаем цикл, не вылетаем!
-                            continue;
-                        }
-                    }
-                    sw.Stop();
-                    settings.LastFullBackupDate = now;
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён.");
-                }
-
-                // ========== 2. ЕЖЕДНЕВНЫЙ ИНКРЕМЕНТ ==========
-                string todayFolder = Path.Combine(dailyRootDir, now.ToString("yyyy-MM-dd"));
-                if (!Directory.Exists(todayFolder))
-                {
-                    // Ищем изменённые файлы после последнего инкремента
-                    var changedFiles = Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories)
-                                                .Select(f => new FileInfo(f))
-                                                .Where(fi => fi.LastWriteTime > settings.LastDailyBackupDate)
-                                                .ToList();
-
-                    if (changedFiles.Any())
-                    {
-                        logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Копирование изменений за сегодня...");
-                        long totalSize = changedFiles.Sum(f => f.Length);
-                        long copiedSize = 0;
-                        var sw = Stopwatch.StartNew();
-                        int fileCount = changedFiles.Count;
-
-                        for (int i = 0; i < fileCount; i++)
-                        {
-                            var fi = changedFiles[i];
-                            string relativePath = fi.FullName.Substring(settings.SourcePath.Length).TrimStart('\\', '/');
-                            string destFile = Path.Combine(todayFolder, relativePath);
-                            Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
-
-                            await Task.Run(() => fi.CopyTo(destFile, true));
-
-                            copiedSize += fi.Length;
+                            totalBytesCopied += fi.Length;
+                            totalFilesCopied++;
 
                             double percent = (double)copiedSize / totalSize * 100;
-                            double speed = sw.Elapsed.TotalSeconds > 0 ? (copiedSize / 1024.0 / 1024.0) / sw.Elapsed.TotalSeconds : 0;
+                            double speed = sw.Elapsed.TotalSeconds > 0
+                                ? (copiedSize / 1024.0 / 1024.0) / sw.Elapsed.TotalSeconds
+                                : 0;
 
                             progress?.Report(new BackupProgressData
                             {
@@ -136,23 +122,131 @@ namespace AutoSaver
                                 TotalBytes = totalSize
                             });
 
-                            logger?.Invoke($"Сохранен (инкремент): {relativePath}");
+                            // Краткое логирование (раскомментируйте, если хотите видеть каждый файл)
+                            // logger?.Invoke($"[OK] {relativePath}");
                         }
-                        sw.Stop();
-                        settings.LastDailyBackupDate = now;
-                        logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневной инкремент завершён.");
+                        catch (Exception ex)
+                        {
+                            logger?.Invoke($"Ошибка файла {fi.Name}: {ex.Message}");
+                            continue;
+                        }
                     }
-                    else
+                    sw.Stop();
+                    settings.LastFullBackupDate = now;
+                    settings.LastDailyBackupDate = now;
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён.");
+                }
+                else
+                {
+                    // ========== 2. ЕЖЕДНЕВНЫЙ ИНКРЕМЕНТ ==========
+                    string todayFolder = Path.Combine(dailyRootDir, now.ToString("yyyy-MM-dd"));
+                    if (!Directory.Exists(todayFolder))
                     {
-                        logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Изменений не найдено. Создана пустая папка дня.");
-                        Directory.CreateDirectory(todayFolder);
+                        var changedFiles = Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories)
+                                                    .Select(f => new FileInfo(f))
+                                                    .Where(fi => fi.LastWriteTime > settings.LastDailyBackupDate ||
+                                                                 fi.CreationTime > settings.LastDailyBackupDate)
+                                                    .ToList();
+
+                        if (changedFiles.Any())
+                        {
+                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Копирование изменений за сегодня...");
+                            long totalSize = changedFiles.Sum(f => f.Length);
+                            long copiedSize = 0;
+                            var sw = Stopwatch.StartNew();
+                            int fileCount = changedFiles.Count;
+                            bool hasError = false;
+
+                            Directory.CreateDirectory(todayFolder);
+
+                            for (int i = 0; i < fileCount; i++)
+                            {
+                                var fi = changedFiles[i];
+                                if (fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
+                                    continue;
+
+                                try
+                                {
+                                    string relativePath = Path.GetRelativePath(settings.SourcePath, fi.FullName);
+                                    string destFile = Path.Combine(todayFolder, relativePath);
+                                    Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
+
+                                    bool copied = false;
+                                    for (int attempt = 0; attempt < 3; attempt++)
+                                    {
+                                        try
+                                        {
+                                            fi.CopyTo(destFile, true);
+                                            copied = true;
+                                            break;
+                                        }
+                                        catch (IOException) when (attempt < 2)
+                                        {
+                                            await Task.Delay(5000);
+                                        }
+                                    }
+                                    if (!copied)
+                                    {
+                                        logger?.Invoke($"[ПРОПУЩЕНО инкремент]: {fi.Name} занят после 3 попыток");
+                                        hasError = true;
+                                        continue;
+                                    }
+
+                                    copiedSize += fi.Length;
+                                    totalBytesCopied += fi.Length;
+                                    totalFilesCopied++;
+
+                                    double percent = (double)copiedSize / totalSize * 100;
+                                    double speed = sw.Elapsed.TotalSeconds > 0
+                                        ? (copiedSize / 1024.0 / 1024.0) / sw.Elapsed.TotalSeconds
+                                        : 0;
+
+                                    progress?.Report(new BackupProgressData
+                                    {
+                                        Percentage = percent,
+                                        Speed = speed,
+                                        TimeElapsed = sw.Elapsed.ToString(@"hh\:mm\:ss"),
+                                        CurrentFileNumber = i + 1,
+                                        TotalFiles = fileCount,
+                                        CopiedBytes = copiedSize,
+                                        TotalBytes = totalSize
+                                    });
+
+                                    // Краткое логирование для инкремента (раскомментируйте при необходимости)
+                                    // logger?.Invoke($"[OK инкремент] {relativePath}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    hasError = true;
+                                    logger?.Invoke($"Ошибка (инкремент) {fi.Name}: {ex.Message}");
+                                    continue;
+                                }
+                            }
+                            sw.Stop();
+
+                            if (hasError)
+                            {
+                                logger?.Invoke($"Обнаружены ошибки – папка инкремента будет удалена, чтобы повторить позже.");
+                                try { Directory.Delete(todayFolder, true); } catch { }
+                            }
+                            else
+                            {
+                                settings.LastDailyBackupDate = now;
+                                logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневной инкремент завершён.");
+                            }
+                        }
+                        else
+                        {
+                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Изменений не найдено.");
+                            settings.LastDailyBackupDate = now;
+                        }
                     }
                 }
 
-                // ========== 3. ОЧИСТКА СТАРЫХ ИНКРЕМЕНТОВ (оставляем 7 последних) ==========
+                // ========== 3. ОЧИСТКА СТАРЫХ ИНКРЕМЕНТОВ ==========
                 var dailyFolders = Directory.GetDirectories(dailyRootDir)
                                             .Select(d => new DirectoryInfo(d))
-                                            .OrderByDescending(d => d.CreationTime)
+                                            .OrderByDescending(d => d.Name)
                                             .ToList();
                 if (dailyFolders.Count > 7)
                 {
@@ -162,7 +256,9 @@ namespace AutoSaver
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаляем: {oldFolder.Name}");
                         try
                         {
-                            await Task.Run(() => Directory.Delete(oldFolder.FullName, true));
+                            foreach (var file in Directory.GetFiles(oldFolder.FullName, "*", SearchOption.AllDirectories))
+                                File.SetAttributes(file, FileAttributes.Normal);
+                            Directory.Delete(oldFolder.FullName, true);
                         }
                         catch (Exception ex)
                         {
@@ -171,15 +267,20 @@ namespace AutoSaver
                     }
                 }
 
+                // ---------- ПОДВАЛ СЕССИИ И СТАТИСТИКА ----------
+                sessionSw.Stop();
+                logger?.Invoke("--------------------------------------------------");
+                logger?.Invoke($"ИТОГО ЗА СЕССИЮ:");
+                logger?.Invoke($"Время выполнения: {sessionSw.Elapsed:hh\\:mm\\:ss}");
+                logger?.Invoke($"Файлов скопировано: {totalFilesCopied}");
+                logger?.Invoke($"Общий объем: {FormatSize(totalBytesCopied)}");
+                logger?.Invoke("==================================================\n");
                 logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён!");
             }
             finally
             {
-                // Разрешаем системе снова засыпать, когда всё готово
                 SetThreadExecutionState(ES_CONTINUOUS);
             }
-
-            
         }
 
         private static void CopyModifiedFiles(string sourceDir, string destDir, DateTime lastBackup)
@@ -228,6 +329,14 @@ namespace AutoSaver
                 foreach (DirectoryInfo dir in di.GetDirectories()) dir.Delete(true);
             }
 
-
+        private static string FormatSize(long bytes)
+        {
+            double gb = bytes / 1024.0 / 1024.0 / 1024.0;
+            if (gb >= 1) return $"{gb:F2} ГБ";
+            double mb = bytes / 1024.0 / 1024.0;
+            return $"{mb:F2} МБ";
         }
+
+
+    }
     }

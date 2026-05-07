@@ -24,3 +24,4 @@ C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows10.0.19041.0\
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows10.0.19041.0\AutoSaver.pdb
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows10.0.19041.0\AutoSaver.genruntimeconfig.cache
 C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows10.0.19041.0\ref\AutoSaver.dll
+C:\Users\anton\Desktop\AutoSaver\AutoSaver\obj\Debug\net8.0-windows10.0.19041.0\AutoSaver_Content.g.cs

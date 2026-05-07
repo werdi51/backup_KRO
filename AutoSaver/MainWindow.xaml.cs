@@ -117,13 +117,18 @@ namespace AutoSaver
 
             try
             {
-                await Task.Run(async () => {
-                    await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
-                        Dispatcher.Invoke(() => {
-                            TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}\n");
-                            TxtStatus.ScrollToEnd();
-                        }));
-                });
+                string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backup_history.log");
+
+                await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
+                    Dispatcher.Invoke(() =>
+                    {
+                        // 1. Вывод на экран
+                        TxtStatus.AppendText($"{msg}\n");
+                        TxtStatus.ScrollToEnd();
+
+                        // 2. Запись в файл (добавляем строку)
+                        File.AppendAllText(logFilePath, $"{msg}\n");
+                    }));
             }
             catch (Exception ex)
             {
@@ -132,8 +137,13 @@ namespace AutoSaver
             finally
             {
                 BtnRunNow.IsEnabled = true;
-                // Сброс показателей прогресса (как обсуждали раньше)
+                PrgBar.Value = 0;
+                TxtPercent.Text = "0%";
+                TxtSpeed.Text = "0 МБ/с";
+                TxtTimer.Text = "00:00:00";
+                TxtFileCount.Text = "Файлов: 0 / 0";
+                TxtSizeProgress.Text = "0.00 ГБ / 0.00 ГБ";
             }
         }
     }
-}
+    }
