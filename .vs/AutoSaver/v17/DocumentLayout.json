@@ -3,20 +3,20 @@
   "WorkspaceRootPath": "C:\\Users\\anton\\Desktop\\AutoSaver\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\autosaver.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\autosaver.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\backupengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\backupengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\img_20260506_172646.ico||{177559E0-D141-11D0-92DF-00A0C9138C45}",
-      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\img_20260506_172646.ico||{177559E0-D141-11D0-92DF-00A0C9138C45}"
+      "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|solutionrelative:autosaver\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A0DE14F2-0351-470F-9FBC-266E19E2CDEC}|AutoSaver\\AutoSaver.csproj|c:\\users\\anton\\desktop\\autosaver\\autosaver\\backupsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -46,19 +46,19 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 8,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "IMG_20260506_172646.ico - Icon [256x256, 32-\u0440\u0430\u0437\u0440\u044F\u0434\u043D\u043E\u0435, PNG]",
-              "DocumentMoniker": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\IMG_20260506_172646.ico",
-              "RelativeDocumentMoniker": "AutoSaver\\IMG_20260506_172646.ico",
-              "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\IMG_20260506_172646.ico - Icon [256x256, 32-\u0440\u0430\u0437\u0440\u044F\u0434\u043D\u043E\u0435, PNG]",
-              "RelativeToolTip": "AutoSaver\\IMG_20260506_172646.ico - Icon [256x256, 32-\u0440\u0430\u0437\u0440\u044F\u0434\u043D\u043E\u0435, PNG]",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001525|",
-              "WhenOpened": "2026-05-07T07:54:01.834Z",
-              "EditorCaption": " - Icon [256x256, 32-\u0440\u0430\u0437\u0440\u044F\u0434\u043D\u043E\u0435, PNG]"
+              "DocumentIndex": 0,
+              "Title": "AutoSaver",
+              "DocumentMoniker": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\AutoSaver.csproj",
+              "RelativeDocumentMoniker": "AutoSaver\\AutoSaver.csproj",
+              "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\AutoSaver.csproj",
+              "RelativeToolTip": "AutoSaver\\AutoSaver.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2026-05-13T07:42:15.141Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -70,8 +70,7 @@
               "RelativeToolTip": "AutoSaver\\BackupSettings.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAiAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-07T07:53:56.501Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:53:56.501Z"
             },
             {
               "$type": "Document",
@@ -83,8 +82,7 @@
               "RelativeToolTip": "AutoSaver\\BackupProgressData.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-07T07:53:51.972Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:53:51.972Z"
             },
             {
               "$type": "Document",
@@ -96,20 +94,18 @@
               "RelativeToolTip": "AutoSaver\\AssemblyInfo.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-07T07:53:43.497Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:53:43.497Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\MainWindow.xaml",
               "RelativeDocumentMoniker": "AutoSaver\\MainWindow.xaml",
               "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\MainWindow.xaml",
               "RelativeToolTip": "AutoSaver\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-05-07T07:28:56.954Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:28:56.954Z"
             },
             {
               "$type": "Document",
@@ -120,8 +116,7 @@
               "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\App.xaml",
               "RelativeToolTip": "AutoSaver\\App.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2026-05-07T07:25:06.107Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:25:06.107Z"
             },
             {
               "$type": "Document",
@@ -133,8 +128,7 @@
               "RelativeToolTip": "AutoSaver\\App.xaml.cs",
               "ViewState": "AgIAACIAAAAAAAAAAAAcwCMAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-07T07:25:00.823Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-07T07:25:00.823Z"
             },
             {
               "$type": "Document",
@@ -144,20 +138,20 @@
               "RelativeDocumentMoniker": "AutoSaver\\BackupEngine.cs",
               "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\BackupEngine.cs",
               "RelativeToolTip": "AutoSaver\\BackupEngine.cs",
-              "ViewState": "AgIAAHsAAAAAAAAAAAAlwJIAAAAwAAAAAAAAAA==",
+              "ViewState": "AgIAAAgBAAAAAAAAAAAowCABAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-07T07:18:12.099Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "AutoSaver\\MainWindow.xaml.cs",
               "ToolTip": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\MainWindow.xaml.cs",
               "RelativeToolTip": "AutoSaver\\MainWindow.xaml.cs",
-              "ViewState": "AgIAACwAAAAAAAAAAAAqwJIAAAATAAAAAAAAAA==",
+              "ViewState": "AgIAACwAAAAAAAAAAAAAwEwAAAA2AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-05-07T07:14:53.152Z",
               "EditorCaption": ""

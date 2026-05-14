@@ -43,14 +43,20 @@
             </DockPanel>
         </StackPanel>
         <Border Grid.Row="3" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="3" Margin="0,10">
-            <TextBox x:Name="TxtStatus" 
-             Text="Программа готова к работе" 
+            <RichTextBox x:Name="TxtStatus" 
              IsReadOnly="True" 
-             TextWrapping="Wrap" 
              VerticalScrollBarVisibility="Auto" 
              BorderThickness="0" 
              Background="Transparent"
-             AcceptsReturn="True"/>
+             FontFamily="Consolas" FontSize="12">
+                <RichTextBox.Document>
+                    <FlowDocument>
+                        <Paragraph>
+                            <Run Text="Программа готова к работе" Foreground="Gray" />
+                        </Paragraph>
+                    </FlowDocument>
+                </RichTextBox.Document>
+            </RichTextBox>
         </Border>
 
         <StackPanel Grid.Row="4" VerticalAlignment="Bottom">

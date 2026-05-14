@@ -33,6 +33,7 @@ namespace AutoSaver
                 var sessionSw = Stopwatch.StartNew();
                 long totalBytesCopied = 0;
                 int totalFilesCopied = 0;
+                var failedFiles = new List<string>();
 
                 // Проверка путей
                 if (string.IsNullOrEmpty(settings.SourcePath) || string.IsNullOrEmpty(settings.DestinationPath))
@@ -43,6 +44,7 @@ namespace AutoSaver
                 if (!Directory.Exists(settings.SourcePath))
                 {
                     logger?.Invoke($"Ошибка: Исходная папка не существует: {settings.SourcePath}");
+
                     return;
                 }
 
@@ -99,6 +101,8 @@ namespace AutoSaver
                             if (!copied)
                             {
                                 logger?.Invoke($"[ПРОПУЩЕНО]: Файл {fi.Name} занят, не удалось скопировать после 3 попыток.");
+                                failedFiles.Add(fi.Name);   // добавляем
+
                                 continue;
                             }
 
@@ -128,6 +132,8 @@ namespace AutoSaver
                         catch (Exception ex)
                         {
                             logger?.Invoke($"Ошибка файла {fi.Name}: {ex.Message}");
+                            failedFiles.Add(fi.Name);   // добавляем
+                            
                             continue;
                         }
                     }
@@ -219,6 +225,8 @@ namespace AutoSaver
                             {
                                 hasError = true;
                                 logger?.Invoke($"Ошибка (инкремент) {fi.Name}: {ex.Message}");
+                                failedFiles.Add(fi.Name);   // добавляем
+                                
                                 continue;
                             }
                         }
@@ -233,6 +241,8 @@ namespace AutoSaver
                         {
                             settings.LastDailyBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
                             logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневной инкремент завершён.");
+
+
                         }
                     }
                     else
@@ -240,6 +250,7 @@ namespace AutoSaver
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Изменений не найдено.");
                         // Обновляем дату в любом случае, чтобы при следующем запуске не анализировать те же файлы
                         settings.LastDailyBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
+
                     }
                 }
      
@@ -249,10 +260,10 @@ namespace AutoSaver
                                             .Select(d => new DirectoryInfo(d))
                                             .OrderByDescending(d => d.Name)
                                             .ToList();
-                if (dailyFolders.Count > 7)
+                if (dailyFolders.Count > 30)
                 {
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов (оставляем 7)...");
-                    foreach (var oldFolder in dailyFolders.Skip(7))
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов (оставляем 30)...");
+                    foreach (var oldFolder in dailyFolders.Skip(30))
                     {
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаляем: {oldFolder.Name}");
                         try
@@ -268,6 +279,15 @@ namespace AutoSaver
                     }
                 }
 
+                if (failedFiles.Count > 0)
+                {
+                    logger?.Invoke("--------------------------------------------------");
+                    logger?.Invoke($"⚠️ НЕ УДАЛОСЬ СКОПИРОВАТЬ ({failedFiles.Count} ФАЙЛОВ):");
+                    foreach (var fileName in failedFiles)
+                        logger?.Invoke($" - {fileName}");
+                }
+
+
                 // ---------- ПОДВАЛ СЕССИИ И СТАТИСТИКА ----------
                 sessionSw.Stop();
                 logger?.Invoke("--------------------------------------------------");
@@ -276,7 +296,10 @@ namespace AutoSaver
                 logger?.Invoke($"Файлов скопировано: {totalFilesCopied}");
                 logger?.Invoke($"Общий объем: {FormatSize(totalBytesCopied)}");
                 logger?.Invoke("==================================================\n");
-                logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён!");
+                if (failedFiles.Count > 0)
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап завершён с {failedFiles.Count} ошибками.");
+                else
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён!");
             }
             finally
             {
@@ -284,22 +307,22 @@ namespace AutoSaver
             }
         }
 
-        private static void CopyModifiedFiles(string sourceDir, string destDir, DateTime lastBackup)
-            {
-                foreach (string file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
-                {
-                    FileInfo fi = new FileInfo(file);
-                    if (fi.LastWriteTime > lastBackup)
-                    {
-                        // Создаем структуру подпапок в целевой папке
-                        string relativePath = file.Substring(sourceDir.Length + 1);
-                        string targetFile = Path.Combine(destDir, relativePath);
+        //private static void CopyModifiedFiles(string sourceDir, string destDir, DateTime lastBackup)
+        //    {
+        //        foreach (string file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+        //        {
+        //            FileInfo fi = new FileInfo(file);
+        //            if (fi.LastWriteTime > lastBackup)
+        //            {
+        //                // Создаем структуру подпапок в целевой папке
+        //                string relativePath = file.Substring(sourceDir.Length + 1);
+        //                string targetFile = Path.Combine(destDir, relativePath);
 
-                        Directory.CreateDirectory(Path.GetDirectoryName(targetFile));
-                        File.Copy(file, targetFile, true);
-                    }
-                }
-            }
+        //                Directory.CreateDirectory(Path.GetDirectoryName(targetFile));
+        //                File.Copy(file, targetFile, true);
+        //            }
+        //        }
+        //    }
 
             private static void CopyDirectory(string sourceDir, string destDir, bool recursive)
             {
@@ -325,6 +348,8 @@ namespace AutoSaver
 
             private static void ClearDirectory(string path)
             {
+            if (!Directory.Exists(path)) return;
+
                 DirectoryInfo di = new DirectoryInfo(path);
                 foreach (FileInfo file in di.GetFiles()) file.Delete();
                 foreach (DirectoryInfo dir in di.GetDirectories()) dir.Delete(true);

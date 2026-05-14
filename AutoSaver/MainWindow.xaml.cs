@@ -69,11 +69,12 @@ namespace AutoSaver
 
                     TxtSourcePath.Text = _settings.SourcePath;
                     TxtDestPath.Text = _settings.DestinationPath;
-                    TxtStatus.Text = "Настройки загружены.";
+                    TxtStatus.Document.Blocks.Clear();
+                    TxtStatus.Document.Blocks.Add(new Paragraph(new Run("Настройки загружены.") { Foreground = Brushes.Gray }));
                 }
                 catch (Exception ex)
                 {
-                    TxtStatus.Text = $"Ошибка загрузки настроек: {ex.Message}";
+                    AppendColoredText($"Ошибка загрузки настроек: {ex.Message}", Brushes.Red);
                 }
             }
         }
@@ -87,7 +88,7 @@ namespace AutoSaver
             {
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                TxtStatus.Text = $"Настройки успешно сохранены в {DateTime.Now:HH:mm:ss}";
+                AppendColoredText($"Настройки успешно сохранены в {DateTime.Now:HH:mm:ss}", Brushes.Green);
             }
             catch (Exception ex)
             {
@@ -108,8 +109,7 @@ namespace AutoSaver
         private async void BtnRunNow_Click(object sender, RoutedEventArgs e)
         {
             BtnRunNow.IsEnabled = false;
-            TxtStatus.Clear();
-
+            TxtStatus.Document.Blocks.Clear();
             var progress = new Progress<BackupProgressData>(data =>
             {
                 PrgBar.Value = data.Percentage;
@@ -124,25 +124,29 @@ namespace AutoSaver
             {
                 string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backup_history.log");
 
-                await Task.Run(async () =>
-                {
+
                     await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
                         Dispatcher.Invoke(() =>
                         {
-                            TxtStatus.AppendText($"{msg}\n");
-                            TxtStatus.ScrollToEnd();
-                            File.AppendAllText(logFilePath, $"{msg}\n");
+                            if (msg.StartsWith("[ОШИБКА]") || msg.Contains("не удалось") || msg.Contains("ошибка"))
+                                AppendColoredText(msg, Brushes.Red);
+                            else if (msg.StartsWith("[ПРОПУЩЕНО]") || msg.Contains("ПРЕДУПРЕЖДЕНИЕ"))
+                                AppendColoredText(msg, Brushes.Orange);
+                            else
+                                AppendColoredText(msg, Brushes.Black);
+                            // также пишем в файл (без цвета)
+                            File.AppendAllText(logFilePath, msg + "\n");
                         }));
-                });
+
 
                 // 💾 СОХРАНЯЕМ ОБНОВЛЁННЫЕ ДАТЫ ПОСЛЕ БЭКАПА
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] Настройки с обновлёнными датами сохранены.\n");
+                AppendColoredText($"[{DateTime.Now:HH:mm:ss}] Настройки с обновлёнными датами сохранены.", Brushes.Green);
             }
             catch (Exception ex)
             {
-                TxtStatus.AppendText($"\n[ОШИБКА] {ex.Message}\n");
+                AppendColoredText($"[ОШИБКА] {ex.Message}", Brushes.Red);
             }
             finally
             {
@@ -155,5 +159,23 @@ namespace AutoSaver
                 TxtSizeProgress.Text = "0.00 ГБ / 0.00 ГБ";
             }
         }
+        private void AppendColoredText(string text, Brush color)
+        {
+            var paragraph = new Paragraph();
+            var run = new Run(text + "\n") { Foreground = color };
+            paragraph.Inlines.Add(run);
+            TxtStatus.Document.Blocks.Add(paragraph);
+            TxtStatus.ScrollToEnd();
+        }
+        private void SetStatusText(string text, Brush color)
+        {
+            TxtStatus.Document.Blocks.Clear();
+            var paragraph = new Paragraph();
+            var run = new Run(text) { Foreground = color };
+            paragraph.Inlines.Add(run);
+            TxtStatus.Document.Blocks.Add(paragraph);
+            TxtStatus.ScrollToEnd();
+        }
     }
+
     }

@@ -30,6 +30,6 @@
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("robotocondensed-light.ttf")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("robotocondensed-lightitalic.ttf")]
 [assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("robotocondensed-regular.ttf")]
-[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("png.ico")]
+[assembly: System.Windows.Resources.AssemblyAssociatedContentFileAttribute("bin/debug/net8.0-windows10.0.19041.0/png.ico")]
 
 
