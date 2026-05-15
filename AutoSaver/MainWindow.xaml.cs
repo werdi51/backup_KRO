@@ -13,6 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Path = System.IO.Path;
+using System.Windows.Shell;
 
 namespace AutoSaver
 {
@@ -110,6 +111,16 @@ namespace AutoSaver
         {
             BtnRunNow.IsEnabled = false;
             TxtStatus.Document.Blocks.Clear();
+
+            string logFilePath = GetLogFilePath("backup");
+            if (File.Exists(logFilePath))
+                File.Delete(logFilePath);
+
+            // Сброс прогресса в панели задач перед началом
+            TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            TaskbarItem.ProgressValue = 0;
+            TaskbarItem.Description = "Выполняется бэкап...";
+
             var progress = new Progress<BackupProgressData>(data =>
             {
                 PrgBar.Value = data.Percentage;
@@ -118,35 +129,56 @@ namespace AutoSaver
                 TxtTimer.Text = data.TimeElapsed;
                 TxtFileCount.Text = $"Файлов: {data.CurrentFileNumber} / {data.TotalFiles}";
                 TxtSizeProgress.Text = $"{FormatSize(data.CopiedBytes)} / {FormatSize(data.TotalBytes)}";
+                // Обновляем прогресс в панели задач
+                TaskbarItem.ProgressValue = data.Percentage / 100.0;
             });
 
             try
             {
-                string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backup_history.log");
 
-
-                    await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
-                        Dispatcher.Invoke(() =>
+                await Task.Run(() => BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
+                    Dispatcher.Invoke(() =>
+                    {
+                        bool isFileOk = msg.StartsWith("[OK]") || msg.StartsWith("[OK инкремент]");
+                        if (isFileOk)
                         {
-                            if (msg.StartsWith("[ОШИБКА]") || msg.Contains("не удалось") || msg.Contains("ошибка"))
+                            string fileName = msg.Replace("[OK] ", "").Replace("[OK инкремент] ", "");
+                            SetCurrentFile(fileName);
+                        }
+                        else
+                        {
+                            if (msg.Contains("ошибка") || msg.Contains("не удалось") || msg.Contains("ОШИБКА"))
                                 AppendColoredText(msg, Brushes.Red);
-                            else if (msg.StartsWith("[ПРОПУЩЕНО]") || msg.Contains("ПРЕДУПРЕЖДЕНИЕ"))
-                                AppendColoredText(msg, Brushes.Orange);
+                            else if (msg.Contains("успешно") ||
+                            msg.Contains("завершён") || msg.Contains("ИТОГО"))
+                                AppendColoredText(msg, Brushes.Green);
                             else
                                 AppendColoredText(msg, Brushes.Black);
-                            // также пишем в файл (без цвета)
-                            File.AppendAllText(logFilePath, msg + "\n");
-                        }));
+                        }
+                        File.AppendAllText(logFilePath, msg + "\n");
+                    })));
 
-
-                // 💾 СОХРАНЯЕМ ОБНОВЛЁННЫЕ ДАТЫ ПОСЛЕ БЭКАПА
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
                 AppendColoredText($"[{DateTime.Now:HH:mm:ss}] Настройки с обновлёнными датами сохранены.", Brushes.Green);
+
+                // По завершении успешного бэкапа – устанавливаем прогресс в 100% и через 2 секунды убираем
+                TaskbarItem.ProgressValue = 1;
+                TaskbarItem.Description = "Бэкап завершён";
+                // Через 2 секунды скроем индикатор (необязательно)
+                await Task.Delay(2000);
+                TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+                TaskbarItem.Description = "AutoSaver";
             }
             catch (Exception ex)
             {
                 AppendColoredText($"[ОШИБКА] {ex.Message}", Brushes.Red);
+                // При ошибке – показываем красный прогресс
+                TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Error;
+                TaskbarItem.Description = "Ошибка бэкапа";
+                await Task.Delay(5000);
+                TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+                TaskbarItem.Description = "AutoSaver";
             }
             finally
             {
@@ -157,7 +189,12 @@ namespace AutoSaver
                 TxtTimer.Text = "00:00:00";
                 TxtFileCount.Text = "Файлов: 0 / 0";
                 TxtSizeProgress.Text = "0.00 ГБ / 0.00 ГБ";
+                SetCurrentFile("—");
             }
+        }
+        private void SetCurrentFile(string fileName)
+        {
+            TxtCurrentFile.Text = $"Текущий файл: {fileName}";
         }
         private void AppendColoredText(string text, Brush color)
         {
@@ -166,6 +203,13 @@ namespace AutoSaver
             paragraph.Inlines.Add(run);
             TxtStatus.Document.Blocks.Add(paragraph);
             TxtStatus.ScrollToEnd();
+        }
+        private string GetLogFilePath(string prefix)
+        {
+            string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            Directory.CreateDirectory(logDir);
+            string fileName = $"{prefix}_{DateTime.Now:yyyy-MM-dd}.log";
+            return Path.Combine(logDir, fileName);
         }
         private void SetStatusText(string text, Brush color)
         {
