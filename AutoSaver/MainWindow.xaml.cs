@@ -61,7 +61,12 @@ namespace AutoSaver
                     string json = File.ReadAllText(_settingsPath);
                     _settings = JsonSerializer.Deserialize<BackupSettings>(json) ?? new BackupSettings();
 
-                    // Выводим данные в интерфейс
+                    // Обнуляем миллисекунды, чтобы избежать дрейфа из-за точности
+                    _settings.LastFullBackupDate = _settings.LastFullBackupDate.AddTicks(
+                        -(_settings.LastFullBackupDate.Ticks % TimeSpan.TicksPerSecond));
+                    _settings.LastDailyBackupDate = _settings.LastDailyBackupDate.AddTicks(
+                        -(_settings.LastDailyBackupDate.Ticks % TimeSpan.TicksPerSecond));
+
                     TxtSourcePath.Text = _settings.SourcePath;
                     TxtDestPath.Text = _settings.DestinationPath;
                     TxtStatus.Text = "Настройки загружены.";
@@ -119,16 +124,21 @@ namespace AutoSaver
             {
                 string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backup_history.log");
 
-                await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
-                    Dispatcher.Invoke(() =>
-                    {
-                        // 1. Вывод на экран
-                        TxtStatus.AppendText($"{msg}\n");
-                        TxtStatus.ScrollToEnd();
+                await Task.Run(async () =>
+                {
+                    await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
+                        Dispatcher.Invoke(() =>
+                        {
+                            TxtStatus.AppendText($"{msg}\n");
+                            TxtStatus.ScrollToEnd();
+                            File.AppendAllText(logFilePath, $"{msg}\n");
+                        }));
+                });
 
-                        // 2. Запись в файл (добавляем строку)
-                        File.AppendAllText(logFilePath, $"{msg}\n");
-                    }));
+                // 💾 СОХРАНЯЕМ ОБНОВЛЁННЫЕ ДАТЫ ПОСЛЕ БЭКАПА
+                string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(_settingsPath, json);
+                TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] Настройки с обновлёнными датами сохранены.\n");
             }
             catch (Exception ex)
             {
