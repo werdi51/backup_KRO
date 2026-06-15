@@ -63,11 +63,28 @@ namespace AutoSaver
                     logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Обновление полной копии месяца...");
                     ClearDirectory(monthlyDir);
 
-                    var allFiles = Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories)
-                                            .Select(f => new FileInfo(f))
-                                            .ToList();
+                    var allFiles = new List<FileInfo>();
+                    long totalSize = 0;
 
-                    long totalSize = allFiles.Sum(f => f.Length);
+                    // Безопасно собираем файлы, пропуская те, что исчезли или заблокированы
+                    foreach (string filePath in Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories))
+                    {
+                        var fi = new FileInfo(filePath);
+                        try
+                        {
+                            // Проверяем существование файла ДО чтения его атрибутов
+                            if (!fi.Exists || fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
+                                continue;
+
+                            totalSize += fi.Length;
+                            allFiles.Add(fi);
+                        }
+                        catch
+                        {
+                            // Если файл удалили прямо во время чтения свойств — просто молча пропускаем
+                        }
+                    }
+
                     long copiedSize = 0;
                     var sw = Stopwatch.StartNew();
                     int fileCount = allFiles.Count;
@@ -75,8 +92,8 @@ namespace AutoSaver
                     for (int i = 0; i < fileCount; i++)
                     {
                         var fi = allFiles[i];
-                        if (fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
-                            continue;
+                        // Проверку на скрытые и временные файлы мы уже сделали выше
+
 
                         try
                         {
@@ -148,28 +165,45 @@ namespace AutoSaver
                     string todayFolder = Path.Combine(dailyRootDir, now.ToString("yyyy-MM-dd"));
 
                     // Ищем файлы, изменённые с момента последней успешной проверки
-                    var changedFiles = Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories)
-                                                .Select(f => new FileInfo(f))
-                                                .Where(fi => fi.LastWriteTime > settings.LastDailyBackupDate.AddSeconds(-1))
-                                                .ToList();
+                    // Безопасный сбор изменённых файлов
+                    var changedFiles = new List<FileInfo>();
+                    long totalSize = 0;
+
+                    foreach (string filePath in Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories))
+                    {
+                        var fi = new FileInfo(filePath);
+                        try
+                        {
+                            if (!fi.Exists || fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
+                                continue;
+
+                            // Добавляем только те файлы, дата изменения которых свежее последнего бэкапа
+                            if (fi.LastWriteTime > settings.LastDailyBackupDate.AddSeconds(-1))
+                            {
+                                totalSize += fi.Length;
+                                changedFiles.Add(fi);
+                            }
+                        }
+                        catch
+                        {
+                            // Игнорируем недоступные/исчезнувшие на лету файлы
+                        }
+                    }
 
                     if (changedFiles.Any())
                     {
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Копирование изменений за сегодня...");
-                        long totalSize = changedFiles.Sum(f => f.Length);
                         long copiedSize = 0;
                         var sw = Stopwatch.StartNew();
                         int fileCount = changedFiles.Count;
                         bool hasError = false;
 
-                        // Папка дня создастся, если её ещё нет (при повторных запусках докладываем файлы туда же)
                         Directory.CreateDirectory(todayFolder);
-
                         for (int i = 0; i < fileCount; i++)
                         {
                             var fi = changedFiles[i];
-                            if (fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
-                                continue;
+                            // Проверки на скрытость сделаны при сборе, идём дальше
+
 
                             try
                             {

@@ -194,7 +194,9 @@ namespace AutoSaver
         }
         private void SetCurrentFile(string fileName)
         {
+
             TxtCurrentFile.Text = $"Текущий файл: {fileName}";
+
         }
         private void AppendColoredText(string text, Brush color)
         {

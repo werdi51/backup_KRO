@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AutoSaver")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c12f99e7f89f4271aa767a5a073207a077701889")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+58a3d0d572ae31266e839c3651bf8da0b24b2065")]
 [assembly: System.Reflection.AssemblyProductAttribute("AutoSaver")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AutoSaver")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
