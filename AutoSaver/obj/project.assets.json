@@ -885,11 +885,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\AutoSaver.csproj",
+      "projectUniqueName": "C:\\Users\\anton\\OneDrive\\Desktop\\backup_KRO\\AutoSaver\\AutoSaver.csproj",
       "projectName": "AutoSaver",
-      "projectPath": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\AutoSaver.csproj",
+      "projectPath": "C:\\Users\\anton\\OneDrive\\Desktop\\backup_KRO\\AutoSaver\\AutoSaver.csproj",
       "packagesPath": "C:\\Users\\anton\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\obj\\",
+      "outputPath": "C:\\Users\\anton\\OneDrive\\Desktop\\backup_KRO\\AutoSaver\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -909,6 +909,7 @@
       },
       "frameworks": {
         "net8.0-windows10.0.19041": {
+          "framework": "net8.0-windows10.0.19041",
           "targetAlias": "net8.0-windows10.0.19041.0",
           "projectReferences": {}
         }
@@ -923,10 +924,11 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.200"
     },
     "frameworks": {
       "net8.0-windows10.0.19041": {
+        "framework": "net8.0-windows10.0.19041",
         "targetAlias": "net8.0-windows10.0.19041.0",
         "dependencies": {
           "MaterialDesignThemes": {
@@ -966,7 +968,7 @@
             "privateAssets": "none"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

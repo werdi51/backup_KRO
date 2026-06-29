@@ -31,11 +31,11 @@ namespace AutoSaver
             LoadSettings();
         }
 
-        // --- ЛОГИКА ВЫБОРА ПАПОК ---
+        // Выыбор папок
 
         private void BtnBrowseSource_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFolderDialog { Title = "Выберите папку-источник (сетевую)" };
+            var dialog = new OpenFolderDialog { Title = "Выберите папку-источник" };
             if (dialog.ShowDialog() == true)
             {
                 TxtSourcePath.Text = dialog.FolderName;
@@ -51,7 +51,7 @@ namespace AutoSaver
             }
         }
 
-        // --- РАБОТА С НАСТРОЙКАМИ (JSON) ---
+        // Файл настроек
 
         private void LoadSettings()
         {
@@ -62,7 +62,6 @@ namespace AutoSaver
                     string json = File.ReadAllText(_settingsPath);
                     _settings = JsonSerializer.Deserialize<BackupSettings>(json) ?? new BackupSettings();
 
-                    // Обнуляем миллисекунды, чтобы избежать дрейфа из-за точности
                     _settings.LastFullBackupDate = _settings.LastFullBackupDate.AddTicks(
                         -(_settings.LastFullBackupDate.Ticks % TimeSpan.TicksPerSecond));
                     _settings.LastDailyBackupDate = _settings.LastDailyBackupDate.AddTicks(
@@ -89,16 +88,13 @@ namespace AutoSaver
             {
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                AppendColoredText($"Настройки успешно сохранены в {DateTime.Now:HH:mm:ss}", Brushes.Green);
+                AppendColoredText($"Настройки сохранены в {DateTime.Now:HH:mm:ss}", Brushes.Green);
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Не удалось сохранить настройки: {ex.Message}");
             }
         }
-
-        // Добавь async перед void
-        // BtnRunNow_Click в MainWindow.xaml.cs
 
         private string FormatSize(long bytes)
         {
@@ -116,29 +112,39 @@ namespace AutoSaver
             if (File.Exists(logFilePath))
                 File.Delete(logFilePath);
 
-            // Сброс прогресса в панели задач перед началом
+
+            // П бар
             TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
             TaskbarItem.ProgressValue = 0;
             TaskbarItem.Description = "Выполняется бэкап...";
 
             var progress = new Progress<BackupProgressData>(data =>
             {
-                PrgBar.Value = data.Percentage;
-                TxtPercent.Text = $"{data.Percentage:F1}%";
-                TxtSpeed.Text = $"{data.Speed:F2} МБ/с";
-                TxtTimer.Text = data.TimeElapsed;
+                double safePercent = double.IsNaN(data.Percentage) || double.IsInfinity(data.Percentage)
+                    ? 0
+                    : Math.Max(0, Math.Min(100, data.Percentage));
+
+                double safeSpeed = double.IsNaN(data.Speed) || double.IsInfinity(data.Speed)
+                    ? 0
+                    : data.Speed;
+
+                PrgBar.Value = safePercent;
+                TxtPercent.Text = $"{safePercent:F1}%";
+                TxtSpeed.Text = $"{safeSpeed:F2} МБ/с";
+                TxtTimer.Text = data.TimeElapsed ?? "00:00:00";
                 TxtFileCount.Text = $"Файлов: {data.CurrentFileNumber} / {data.TotalFiles}";
                 TxtSizeProgress.Text = $"{FormatSize(data.CopiedBytes)} / {FormatSize(data.TotalBytes)}";
-                // Обновляем прогресс в панели задач
-                TaskbarItem.ProgressValue = data.Percentage / 100.0;
+
+                TaskbarItem.ProgressValue = safePercent / 100.0;
             });
 
             try
             {
-
+                //Progress<T> - мост для потоков
                 await Task.Run(() => BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
                     Dispatcher.Invoke(() =>
                     {
+                        //проверка
                         bool isFileOk = msg.StartsWith("[OK]") || msg.StartsWith("[OK инкремент]");
                         if (isFileOk)
                         {
@@ -157,23 +163,21 @@ namespace AutoSaver
                         }
                         File.AppendAllText(logFilePath, msg + "\n");
                     })));
-
+                //конвертация
                 string json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
                 AppendColoredText($"[{DateTime.Now:HH:mm:ss}] Настройки с обновлёнными датами сохранены.", Brushes.Green);
 
-                // По завершении успешного бэкапа – устанавливаем прогресс в 100% и через 2 секунды убираем
                 TaskbarItem.ProgressValue = 1;
                 TaskbarItem.Description = "Бэкап завершён";
-                // Через 2 секунды скроем индикатор (необязательно)
                 await Task.Delay(2000);
                 TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
                 TaskbarItem.Description = "AutoSaver";
             }
             catch (Exception ex)
             {
+                //хз, исправь
                 AppendColoredText($"[ОШИБКА] {ex.Message}", Brushes.Red);
-                // При ошибке – показываем красный прогресс
                 TaskbarItem.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Error;
                 TaskbarItem.Description = "Ошибка бэкапа";
                 await Task.Delay(5000);
@@ -213,15 +217,15 @@ namespace AutoSaver
             string fileName = $"{prefix}_{DateTime.Now:yyyy-MM-dd}.log";
             return Path.Combine(logDir, fileName);
         }
-        private void SetStatusText(string text, Brush color)
-        {
-            TxtStatus.Document.Blocks.Clear();
-            var paragraph = new Paragraph();
-            var run = new Run(text) { Foreground = color };
-            paragraph.Inlines.Add(run);
-            TxtStatus.Document.Blocks.Add(paragraph);
-            TxtStatus.ScrollToEnd();
-        }
+        //private void SetStatusText(string text, Brush color)
+        //{
+        //    TxtStatus.Document.Blocks.Clear();
+        //    var paragraph = new Paragraph();
+        //    var run = new Run(text) { Foreground = color };
+        //    paragraph.Inlines.Add(run);
+        //    TxtStatus.Document.Blocks.Add(paragraph);
+        //    TxtStatus.ScrollToEnd();
+        //}
     }
 
     }

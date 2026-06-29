@@ -9,10 +9,10 @@ namespace AutoSaver
     public class BackupSettings
     {
 
-        // Путь к папке, которую копируем
+        // Путь к папке которую копируем
         public string SourcePath { get; set; } = string.Empty;
 
-        // Путь, где храним бэкапы
+        // Путь где храним бэкапы
         public string DestinationPath { get; set; } = string.Empty;
 
         // Когда в последний раз делали полный бэкап месяца

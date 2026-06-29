@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "0nANFY8T/LA=",
+  "dgSpecHash": "pEmvyX89fjI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\anton\\Desktop\\AutoSaver\\AutoSaver\\AutoSaver.csproj",
+  "projectFilePath": "C:\\Users\\anton\\OneDrive\\Desktop\\backup_KRO\\AutoSaver\\AutoSaver.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\anton\\.nuget\\packages\\materialdesigncolors\\5.3.2\\materialdesigncolors.5.3.2.nupkg.sha512",
     "C:\\Users\\anton\\.nuget\\packages\\materialdesignthemes\\5.3.2\\materialdesignthemes.5.3.2.nupkg.sha512",

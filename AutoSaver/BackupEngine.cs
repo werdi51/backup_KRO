@@ -11,21 +11,19 @@ namespace AutoSaver
     {
         public static class BackupEngine
         {
-
+        //P/Invoke
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         static extern uint SetThreadExecutionState(uint esFlags);
 
-        private const uint ES_CONTINUOUS = 0x80000000;
-        private const uint ES_SYSTEM_REQUIRED = 0x00000001;
+        private const uint ES_CONTINUOUS = 0x80000000; // сброс таймера простоя
+        private const uint ES_SYSTEM_REQUIRED = 0x00000001; // Сохранять это положение
 
-        // BackupEngine.ExecuteBackupAsync (исправленный)
         public static async Task ExecuteBackupAsync(BackupSettings settings, IProgress<BackupProgressData> progress, Action<string> logger)
         {
             SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
 
             try
             {
-                // ---------- ШАПКА СЕССИИ ----------
                 logger?.Invoke("==================================================");
                 logger?.Invoke($"СЕССИЯ БЭКАПА ОТ {DateTime.Now:dd.MM.yyyy HH:mm:ss}");
                 logger?.Invoke("==================================================");
@@ -38,7 +36,7 @@ namespace AutoSaver
                 // Проверка путей
                 if (string.IsNullOrEmpty(settings.SourcePath) || string.IsNullOrEmpty(settings.DestinationPath))
                 {
-                    logger?.Invoke("Ошибка: Пути не настроены!");
+                    logger?.Invoke("Ошибка: Пути не настроены");
                     return;
                 }
                 if (!Directory.Exists(settings.SourcePath))
@@ -55,7 +53,7 @@ namespace AutoSaver
 
                 DateTime now = DateTime.Now;
 
-                // ========== 1. ПОЛНЫЙ БЭКАП (раз в месяц) ==========
+                //раз в месяц
                 bool needFull = settings.LastFullBackupDate.Month != now.Month ||
                                 !Directory.EnumerateFileSystemEntries(monthlyDir).Any();
                 if (needFull)
@@ -66,13 +64,13 @@ namespace AutoSaver
                     var allFiles = new List<FileInfo>();
                     long totalSize = 0;
 
-                    // Безопасно собираем файлы, пропуская те, что исчезли или заблокированы
+                    //Фильтр
                     foreach (string filePath in Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories))
                     {
                         var fi = new FileInfo(filePath);
                         try
                         {
-                            // Проверяем существование файла ДО чтения его атрибутов
+                            // Проверяем существование
                             if (!fi.Exists || fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
                                 continue;
 
@@ -81,7 +79,6 @@ namespace AutoSaver
                         }
                         catch
                         {
-                            // Если файл удалили прямо во время чтения свойств — просто молча пропускаем
                         }
                     }
 
@@ -92,7 +89,6 @@ namespace AutoSaver
                     for (int i = 0; i < fileCount; i++)
                     {
                         var fi = allFiles[i];
-                        // Проверку на скрытые и временные файлы мы уже сделали выше
 
 
                         try
@@ -117,8 +113,8 @@ namespace AutoSaver
                             }
                             if (!copied)
                             {
-                                logger?.Invoke($"[ПРОПУЩЕНО]: Файл {fi.Name} занят, не удалось скопировать после 3 попыток.");
-                                failedFiles.Add(fi.Name);   // добавляем
+                                logger?.Invoke($"[ПРОПУЩЕНО]: Файл {fi.Name} занят, не удалось скопировать после 3 попыток");
+                                failedFiles.Add(fi.Name);  
 
                                 continue;
                             }
@@ -127,9 +123,13 @@ namespace AutoSaver
                             totalBytesCopied += fi.Length;
                             totalFilesCopied++;
 
-                            double percent = (double)copiedSize / totalSize * 100;
-                            double speed = sw.Elapsed.TotalSeconds > 0
-                                ? (copiedSize / 1024.0 / 1024.0) / sw.Elapsed.TotalSeconds
+                            double percent = totalSize > 0
+                                ? (double)copiedSize / totalSize * 100
+                                : (i == fileCount - 1 ? 100 : 0);
+
+                            double elapsedSec = sw.Elapsed.TotalSeconds;
+                            double speed = elapsedSec > 0 && copiedSize > 0
+                                ? (copiedSize / 1024.0 / 1024.0) / elapsedSec
                                 : 0;
 
                             progress?.Report(new BackupProgressData
@@ -143,13 +143,12 @@ namespace AutoSaver
                                 TotalBytes = totalSize
                             });
 
-                            // Краткое логирование (раскомментируйте, если хотите видеть каждый файл)
                             logger?.Invoke($"[OK] {relativePath}");
                         }
                         catch (Exception ex)
                         {
                             logger?.Invoke($"Ошибка файла {fi.Name}: {ex.Message}");
-                            failedFiles.Add(fi.Name);   // добавляем
+                            failedFiles.Add(fi.Name);  
                             
                             continue;
                         }
@@ -157,15 +156,14 @@ namespace AutoSaver
                     sw.Stop();
                     settings.LastFullBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
                     settings.LastDailyBackupDate = settings.LastFullBackupDate;
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён.");
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён");
                 }
                 else
                 {
-                    // ========== 2. ЕЖЕДНЕВНЫЙ ИНКРЕМЕНТ ==========
+                    // Каждодневное копирование
                     string todayFolder = Path.Combine(dailyRootDir, now.ToString("yyyy-MM-dd"));
 
                     // Ищем файлы, изменённые с момента последней успешной проверки
-                    // Безопасный сбор изменённых файлов
                     var changedFiles = new List<FileInfo>();
                     long totalSize = 0;
 
@@ -177,7 +175,7 @@ namespace AutoSaver
                             if (!fi.Exists || fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
                                 continue;
 
-                            // Добавляем только те файлы, дата изменения которых свежее последнего бэкапа
+                            // Добавляем только новые
                             if (fi.LastWriteTime > settings.LastDailyBackupDate.AddSeconds(-1))
                             {
                                 totalSize += fi.Length;
@@ -186,7 +184,6 @@ namespace AutoSaver
                         }
                         catch
                         {
-                            // Игнорируем недоступные/исчезнувшие на лету файлы
                         }
                     }
 
@@ -202,7 +199,6 @@ namespace AutoSaver
                         for (int i = 0; i < fileCount; i++)
                         {
                             var fi = changedFiles[i];
-                            // Проверки на скрытость сделаны при сборе, идём дальше
 
 
                             try
@@ -252,15 +248,13 @@ namespace AutoSaver
                                     TotalBytes = totalSize
                                 });
 
-                                // Краткое логирование для инкремента
                                 logger?.Invoke($"[OK инкремент] {relativePath}");
                             }
                             catch (Exception ex)
                             {
                                 hasError = true;
                                 logger?.Invoke($"Ошибка (инкремент) {fi.Name}: {ex.Message}");
-                                failedFiles.Add(fi.Name);   // добавляем
-                                
+                                failedFiles.Add(fi.Name);  
                                 continue;
                             }
                         }
@@ -282,21 +276,20 @@ namespace AutoSaver
                     else
                     {
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Изменений не найдено.");
-                        // Обновляем дату в любом случае, чтобы при следующем запуске не анализировать те же файлы
                         settings.LastDailyBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
 
                     }
                 }
      
 
-                // ========== 3. ОЧИСТКА СТАРЫХ ИНКРЕМЕНТОВ ==========
+                //Очистка старых бэкапов
                 var dailyFolders = Directory.GetDirectories(dailyRootDir)
                                             .Select(d => new DirectoryInfo(d))
                                             .OrderByDescending(d => d.Name)
                                             .ToList();
                 if (dailyFolders.Count > 30)
                 {
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов (оставляем 30)...");
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов   ");
                     foreach (var oldFolder in dailyFolders.Skip(30))
                     {
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаляем: {oldFolder.Name}");
@@ -316,13 +309,13 @@ namespace AutoSaver
                 if (failedFiles.Count > 0)
                 {
                     logger?.Invoke("--------------------------------------------------");
-                    logger?.Invoke($"⚠️ НЕ УДАЛОСЬ СКОПИРОВАТЬ ({failedFiles.Count} ФАЙЛОВ):");
+                    logger?.Invoke($" НЕ УДАЛОСЬ СКОПИРОВАТЬ ({failedFiles.Count} ФАЙЛОВ):");
                     foreach (var fileName in failedFiles)
                         logger?.Invoke($" - {fileName}");
                 }
 
 
-                // ---------- ПОДВАЛ СЕССИИ И СТАТИСТИКА ----------
+                //СТАТИСТИКА
                 sessionSw.Stop();
                 logger?.Invoke("--------------------------------------------------");
                 logger?.Invoke($"ИТОГО ЗА СЕССИЮ:");
@@ -331,9 +324,9 @@ namespace AutoSaver
                 logger?.Invoke($"Общий объем: {FormatSize(totalBytesCopied)}");
                 logger?.Invoke("==================================================\n");
                 if (failedFiles.Count > 0)
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап завершён с {failedFiles.Count} ошибками.");
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап завершён с {failedFiles.Count} ошибками");
                 else
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён!");
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён");
             }
             finally
             {

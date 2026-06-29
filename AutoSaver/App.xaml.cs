@@ -16,7 +16,6 @@
 
             protected override void OnStartup(StartupEventArgs e)
             {
-                // Отключаем автоматический выход при закрытии окон, пока не решим сами
                 this.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
                 if (e.Args.Contains("-run"))
@@ -26,7 +25,6 @@
                 }
                 else
                 {
-                    // Возвращаем обычный режим: программа закроется, когда закроешь окно
                     this.ShutdownMode = ShutdownMode.OnLastWindowClose;
 
                     var mainWindow = new MainWindow();
@@ -61,7 +59,7 @@
                     return;
                 }
 
-                // --- ПРОВЕРКА ПУТЕЙ ---
+                //ПРОВЕРКА ПУТЕЙ
                 if (string.IsNullOrWhiteSpace(settings.SourcePath) || string.IsNullOrWhiteSpace(settings.DestinationPath))
                 {
                     string errMsg = "Путь к исходной папке или папке бэкапов не задан.";
@@ -78,7 +76,7 @@
                     return;
                 }
 
-                // Запускаем бэкап
+                // Запускаем
                 Task.Run(async () =>
                 {
                     await BackupEngine.ExecuteBackupAsync(
@@ -88,7 +86,7 @@
                     );
                 }).GetAwaiter().GetResult();
 
-                // Сохраняем настройки
+                // Сохраняем
                 string updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(settingsPath, updatedJson);
 
