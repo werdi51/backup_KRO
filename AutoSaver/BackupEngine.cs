@@ -24,9 +24,8 @@ namespace AutoSaver
 
             try
             {
-                logger?.Invoke("==================================================");
                 logger?.Invoke($"СЕССИЯ БЭКАПА ОТ {DateTime.Now:dd.MM.yyyy HH:mm:ss}");
-                logger?.Invoke("==================================================");
+                logger?.Invoke("__________________________________________________");
 
                 var sessionSw = Stopwatch.StartNew();
                 long totalBytesCopied = 0;
@@ -88,13 +87,13 @@ namespace AutoSaver
 
                     for (int i = 0; i < fileCount; i++)
                     {
-                        var fi = allFiles[i];
+                        var fi = allFiles[i]; 
 
 
                         try
                         {
-                            string relativePath = Path.GetRelativePath(settings.SourcePath, fi.FullName);
-                            string destFile = Path.Combine(monthlyDir, relativePath);
+                            string relativePath = Path.GetRelativePath(settings.SourcePath, fi.FullName); //получение относительног пути
+                            string destFile = Path.Combine(monthlyDir, relativePath); //обьединение папки месячных копий и относительного пути
                             Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
 
                             bool copied = false;
@@ -163,7 +162,7 @@ namespace AutoSaver
                     // Каждодневное копирование
                     string todayFolder = Path.Combine(dailyRootDir, now.ToString("yyyy-MM-dd"));
 
-                    // Ищем файлы, изменённые с момента последней успешной проверки
+                    // Ищем файлы изменённые с момента последней успешной проверки
                     var changedFiles = new List<FileInfo>();
                     long totalSize = 0;
 
@@ -175,7 +174,7 @@ namespace AutoSaver
                             if (!fi.Exists || fi.Name.StartsWith("~$") || fi.Attributes.HasFlag(FileAttributes.Hidden))
                                 continue;
 
-                            // Добавляем только новые
+                            // Добавляем новыец
                             if (fi.LastWriteTime > settings.LastDailyBackupDate.AddSeconds(-1))
                             {
                                 totalSize += fi.Length;
@@ -223,7 +222,7 @@ namespace AutoSaver
                                 }
                                 if (!copied)
                                 {
-                                    logger?.Invoke($"[ПРОПУЩЕНО инкремент]: {fi.Name} занят после 3 попыток");
+                                    logger?.Invoke($"[ПРОПУЩЕНО дневное]: {fi.Name} занят после 3 попыток");
                                     hasError = true;
                                     continue;
                                 }
@@ -262,13 +261,13 @@ namespace AutoSaver
 
                         if (hasError)
                         {
-                            logger?.Invoke($"Обнаружены ошибки – папка инкремента будет удалена, чтобы повторить позже.");
+                            logger?.Invoke($"Обнаружены ошибки – папка копии будет удалена, чтобы повторить позже.");
                             try { Directory.Delete(todayFolder, true); } catch { }
                         }
                         else
                         {
                             settings.LastDailyBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
-                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневной инкремент завершён.");
+                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневная копия завершён.");
 
 
                         }
@@ -333,23 +332,6 @@ namespace AutoSaver
                 SetThreadExecutionState(ES_CONTINUOUS);
             }
         }
-
-        //private static void CopyModifiedFiles(string sourceDir, string destDir, DateTime lastBackup)
-        //    {
-        //        foreach (string file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
-        //        {
-        //            FileInfo fi = new FileInfo(file);
-        //            if (fi.LastWriteTime > lastBackup)
-        //            {
-        //                // Создаем структуру подпапок в целевой папке
-        //                string relativePath = file.Substring(sourceDir.Length + 1);
-        //                string targetFile = Path.Combine(destDir, relativePath);
-
-        //                Directory.CreateDirectory(Path.GetDirectoryName(targetFile));
-        //                File.Copy(file, targetFile, true);
-        //            }
-        //        }
-        //    }
 
             private static void CopyDirectory(string sourceDir, string destDir, bool recursive)
             {
