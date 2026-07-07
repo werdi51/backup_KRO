@@ -117,14 +117,13 @@ namespace AutoSaver
 
             try
             {
-                await Task.Run(() => BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
-                    Dispatcher.Invoke(() => {
-                        // ДОБАВЛЯЕМ СТРОКУ, А НЕ ЗАМЕНЯЕМ
-                        TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}\n");
-
-                        // АВТО-СКРОЛЛ К ПОСЛЕДНЕЙ ЗАПИСИ
-                        TxtStatus.ScrollToEnd();
-                    })));
+                await Task.Run(async () => {
+                    await BackupEngine.ExecuteBackupAsync(_settings, progress, msg =>
+                        Dispatcher.Invoke(() => {
+                            TxtStatus.AppendText($"[{DateTime.Now:HH:mm:ss}] {msg}\n");
+                            TxtStatus.ScrollToEnd();
+                        }));
+                });
             }
             catch (Exception ex)
             {

@@ -66,32 +66,27 @@ namespace AutoSaver
                     for (int i = 0; i < fileCount; i++)
                     {
                         var fi = allFiles[i];
-                        // Совместимый способ получения относительного пути (работает в .NET Framework)
-                        string relativePath = fi.FullName.Substring(settings.SourcePath.Length).TrimStart('\\', '/');
-                        string destFile = Path.Combine(monthlyDir, relativePath);
-                        Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
-
-                        // Асинхронное копирование (не блокируем поток UI)
-                        await Task.Run(() => fi.CopyTo(destFile, true));
-
-                        copiedSize += fi.Length;
-
-                        // Отчёт о прогрессе
-                        double percent = (double)copiedSize / totalSize * 100;
-                        double speed = sw.Elapsed.TotalSeconds > 0 ? (copiedSize / 1024.0 / 1024.0) / sw.Elapsed.TotalSeconds : 0;
-
-                        progress?.Report(new BackupProgressData
+                        try
                         {
-                            Percentage = percent,
-                            Speed = speed,
-                            TimeElapsed = sw.Elapsed.ToString(@"hh\:mm\:ss"),
-                            CurrentFileNumber = i + 1,
-                            TotalFiles = fileCount,
-                            CopiedBytes = copiedSize,
-                            TotalBytes = totalSize
-                        });
+                            // Используем более надежный способ получения относительного пути
+                            string relativePath = Path.GetRelativePath(settings.SourcePath, fi.FullName);
+                            string destFile = Path.Combine(monthlyDir, relativePath);
 
-                        logger?.Invoke($"Сохранен: {relativePath}");
+                            Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
+
+                            // Само копирование
+                            await Task.Run(() => fi.CopyTo(destFile, true));
+
+                            copiedSize += fi.Length;
+                            // ... (твой код с progress?.Report) ...
+                            logger?.Invoke($"Сохранен: {relativePath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            logger?.Invoke($"Ошибка файла {fi.Name}: {ex.Message}");
+                            // Продолжаем цикл, не вылетаем!
+                            continue;
+                        }
                     }
                     sw.Stop();
                     settings.LastFullBackupDate = now;

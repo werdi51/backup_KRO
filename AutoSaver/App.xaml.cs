@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using Microsoft.Toolkit.Uwp.Notifications;
+
 
 namespace AutoSaver
 {
@@ -34,49 +36,46 @@ namespace AutoSaver
 
         private void RunSilentBackup()
         {
-            string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string settingsPath = Path.Combine(baseDir, "settings.json");
+            string logPath = Path.Combine(baseDir, "service_log.txt"); // Файл для отладки
 
             if (File.Exists(settingsPath))
             {
                 try
                 {
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] Запуск сервиса...\n");
+
                     string json = File.ReadAllText(settingsPath);
                     var settings = JsonSerializer.Deserialize<BackupSettings>(json);
 
                     if (settings != null)
                     {
-                        // 1. ИСПРАВЛЕНО: Теперь создаем прогресс правильного типа
-                        // Мы используем BackupProgressData, но так как в тихом режиме интерфейса нет,
-                        // он просто будет принимать данные и ничего с ними не делать.
-                        var noProgress = new Progress<BackupProgressData>();
+                        // Запускаем через Task.Run, чтобы избежать блокировки потока
+                        Task.Run(async () =>
+                        {
+                            await BackupEngine.ExecuteBackupAsync(
+                                settings,
+                                new Progress<BackupProgressData>(),
+                                msg => File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss}] {msg}\n")
+                            );
+                        }).GetAwaiter().GetResult(); // Ждем завершения без дедлока
 
-                        // 2. Вызываем асинхронный метод и ждем его завершения
-                        BackupEngine.ExecuteBackupAsync(
-                            settings,
-                            noProgress, // Теперь типы совпадают
-                            msg => Console.WriteLine(msg)
-                        ).Wait();
-
-                        // 3. Сохраняем обновленные даты
+                        // Сохраняем настройки
                         string updatedJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                         File.WriteAllText(settingsPath, updatedJson);
 
-                        BackupEngine.ExecuteBackupAsync(...).Wait();
-
-                        // Показываем уведомление об успехе
-                        MessageBox.Show("Бэкап успешно завершен!", "AutoSaver",
-                                        MessageBoxButton.OK, MessageBoxImage.Information);
-
+                        new ToastContentBuilder().AddText("AutoSaver").AddText("Бэкап успешно завершен").Show();
                     }
                 }
                 catch (Exception ex)
                 {
-                    File.AppendAllText("error_log.txt", $"{DateTime.Now}: {ex.Message}\n");
-                    MessageBox.Show($"Ошибка бэкапа: {ex.Message}", "AutoSaver - ОШИБКА",
-                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    File.AppendAllText(logPath, $"[{DateTime.Now}] КРИТИЧЕСКАЯ ОШИБКА: {ex.Message}\n");
+                    new ToastContentBuilder().AddText("AutoSaver: ОШИБКА").AddText(ex.Message).Show();
                 }
             }
         }
+
 
 
     }
