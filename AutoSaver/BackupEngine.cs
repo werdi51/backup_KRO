@@ -105,7 +105,7 @@ namespace AutoSaver
                                     copied = true;
                                     break;
                                 }
-                                catch (IOException) when (attempt < 2)
+                                catch (Exception) when (attempt < 2)  
                                 {
                                     await Task.Delay(5000);
                                 }
@@ -215,7 +215,7 @@ namespace AutoSaver
                                         copied = true;
                                         break;
                                     }
-                                    catch (IOException) when (attempt < 2)
+                                    catch (Exception) when (attempt < 2)
                                     {
                                         await Task.Delay(5000);
                                     }
@@ -326,6 +326,11 @@ namespace AutoSaver
                     logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап завершён с {failedFiles.Count} ошибками");
                 else
                     logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Бэкап успешно завершён");
+            }
+            catch (Exception ex)
+            {
+                logger?.Invoke($"КРИТИЧЕСКАЯ ОШИБКА В ДВИЖКЕ: {ex.Message}");
+                logger?.Invoke($"Стек: {ex.StackTrace}");
             }
             finally
             {
