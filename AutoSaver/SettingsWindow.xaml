@@ -7,7 +7,7 @@
         TextElement.FontSize="13"
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="{materialDesign:MaterialDesignFont}"
-        Title="Настройки" Height="330" Width="400"
+        Title="Настройки" Height="350" Width="400"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner">
     <StackPanel Margin="20">
