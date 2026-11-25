@@ -106,6 +106,9 @@ namespace AutoSaver
         private async void BtnRunNow_Click(object sender, RoutedEventArgs e)
         {
             BtnRunNow.IsEnabled = false;
+            BtnSettings.IsEnabled = false;
+
+
             TxtStatus.Document.Blocks.Clear();
 
             string logFilePath = GetLogFilePath("backup");
@@ -187,6 +190,9 @@ namespace AutoSaver
             finally
             {
                 BtnRunNow.IsEnabled = true;
+                BtnSettings.IsEnabled = true;
+
+
                 PrgBar.Value = 0;
                 TxtPercent.Text = "0%";
                 TxtSpeed.Text = "0 МБ/с";
@@ -216,6 +222,23 @@ namespace AutoSaver
             Directory.CreateDirectory(logDir);
             string fileName = $"{prefix}_{DateTime.Now:yyyy-MM-dd}.log";
             return Path.Combine(logDir, fileName);
+        }
+
+        private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new SettingsWindow(_settings.FullBackupDay, _settings.DailyRetentionDays)
+            {
+                Owner = this
+            };
+
+            if (win.ShowDialog() == true)
+            {
+                _settings.FullBackupDay = win.FullBackupDay;
+                _settings.DailyRetentionDays = win.DailyRetentionDays;
+
+                // Сразу сохраняем в settings.json, чтобы ночной запуск (-run) тоже их увидел
+                BtnSave_Click(sender, e);
+            }
         }
         //private void SetStatusText(string text, Brush color)
         //{

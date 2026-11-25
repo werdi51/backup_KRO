@@ -6,6 +6,7 @@
     using System.Text;
     using System.Threading.Tasks;
     using System.Runtime.InteropServices;
+    using System.Threading;
 
 namespace AutoSaver
     {
@@ -15,11 +16,18 @@ namespace AutoSaver
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         static extern uint SetThreadExecutionState(uint esFlags);
 
-        private const uint ES_CONTINUOUS = 0x80000000; // сброс таймера простоя
-        private const uint ES_SYSTEM_REQUIRED = 0x00000001; // Сохранять это положение
+        private const uint ES_CONTINUOUS = 0x80000000; 
+        private const uint ES_SYSTEM_REQUIRED = 0x00000001;
 
         public static async Task ExecuteBackupAsync(BackupSettings settings, IProgress<BackupProgressData> progress, Action<string> logger)
         {
+            using var mutex = new Mutex(true, @"Global\AutoSaver_BackupLock", out bool isNew);
+            if (!isNew)
+            {
+                logger?.Invoke("Бэкап уже выполняется другим экземпляром.");
+                return;
+            }
+
             SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED);
 
             try
@@ -46,25 +54,32 @@ namespace AutoSaver
                 }
 
                 string monthlyDir = Path.Combine(settings.DestinationPath, "Month_Full");
+                string monthlyNewDir = Path.Combine(settings.DestinationPath, "Month_Full_new");
+                string monthlyOldDir = Path.Combine(settings.DestinationPath, "Month_Full_old");
+
+
                 string dailyRootDir = Path.Combine(settings.DestinationPath, "Daily_Changes");
                 Directory.CreateDirectory(monthlyDir);
                 Directory.CreateDirectory(dailyRootDir);
 
                 DateTime now = DateTime.Now;
 
-                //раз в месяц
-                bool needFull = settings.LastFullBackupDate.Month != now.Month ||
-                                !Directory.EnumerateFileSystemEntries(monthlyDir).Any();
+                // Если выбрано 31, а в месяце 30 дней (или февраль), берём последний день месяца
+                int day = Math.Clamp(settings.FullBackupDay, 1, DateTime.DaysInMonth(now.Year, now.Month));
+                DateTime scheduledFull = new DateTime(now.Year, now.Month, day);
+
+                bool needFull = !Directory.EnumerateFileSystemEntries(monthlyDir).Any() ||
+                                (now.Date >= scheduledFull && settings.LastFullBackupDate < scheduledFull);
+
                 if (needFull)
                 {
                     logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Обновление полной копии месяца...");
-                    ClearDirectory(monthlyDir);
 
                     var allFiles = new List<FileInfo>();
                     long totalSize = 0;
 
-                    //Фильтр
-                    foreach (string filePath in Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories))
+                    //Фил
+                    foreach (string filePath in SafeEnumerateFiles(settings.SourcePath))
                     {
                         var fi = new FileInfo(filePath);
                         try
@@ -96,12 +111,12 @@ namespace AutoSaver
                             string destFile = Path.Combine(monthlyDir, relativePath); //обьединение папки месячных копий и относительного пути
                             Directory.CreateDirectory(Path.GetDirectoryName(destFile) ?? string.Empty);
 
-                            bool copied = false;
-                            for (int attempt = 0; attempt < 3; attempt++)
+                            bool copied = IsSameFile(fi, destFile);   // не изменился: пропускаем копирование
+                            for (int attempt = 0; !copied && attempt < 3; attempt++)
                             {
                                 try
                                 {
-                                    fi.CopyTo(destFile, true);
+                                    CopyFileShared(fi.FullName, destFile);
                                     copied = true;
                                     break;
                                 }
@@ -153,9 +168,16 @@ namespace AutoSaver
                         }
                     }
                     sw.Stop();
-                    settings.LastFullBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
-                    settings.LastDailyBackupDate = settings.LastFullBackupDate;
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён");
+                    if (failedFiles.Count == 0)
+                    {
+                        settings.LastFullBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
+                        settings.LastDailyBackupDate = settings.LastFullBackupDate;
+                        logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап завершён");
+                    }
+                    else
+                    {
+                        logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Месячный бэкап неполный ({failedFiles.Count} файлов занято), повтор при следующем запуске");
+                    }
                 }
                 else
                 {
@@ -166,7 +188,7 @@ namespace AutoSaver
                     var changedFiles = new List<FileInfo>();
                     long totalSize = 0;
 
-                    foreach (string filePath in Directory.GetFiles(settings.SourcePath, "*.*", SearchOption.AllDirectories))
+                    foreach (string filePath in SafeEnumerateFiles(settings.SourcePath))
                     {
                         var fi = new FileInfo(filePath);
                         try
@@ -211,7 +233,7 @@ namespace AutoSaver
                                 {
                                     try
                                     {
-                                        fi.CopyTo(destFile, true);
+                                        CopyFileShared(fi.FullName, destFile);
                                         copied = true;
                                         break;
                                     }
@@ -258,18 +280,21 @@ namespace AutoSaver
                             }
                         }
                         sw.Stop();
-
                         if (hasError)
                         {
-                            logger?.Invoke($"Обнаружены ошибки – папка копии будет удалена, чтобы повторить позже.");
-                            try { Directory.Delete(todayFolder, true); } catch { }
+                            logger?.Invoke("Обнаружены ошибки – папка копии будет удалена, чтобы повторить позже.");
+                            try
+                            {
+                                foreach (var f in Directory.EnumerateFiles(todayFolder, "*", SearchOption.AllDirectories))
+                                    try { File.SetAttributes(f, FileAttributes.Normal); } catch { }
+                                Directory.Delete(todayFolder, true);
+                            }
+                            catch { }
                         }
                         else
                         {
                             settings.LastDailyBackupDate = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerSecond));
-                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневная копия завершён.");
-
-
+                            logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Дневная копия завершена.");
                         }
                     }
                     else
@@ -286,16 +311,18 @@ namespace AutoSaver
                                             .Select(d => new DirectoryInfo(d))
                                             .OrderByDescending(d => d.Name)
                                             .ToList();
-                if (dailyFolders.Count > 30)
+                int keepDays = Math.Max(1, settings.DailyRetentionDays);
+                if (dailyFolders.Count > keepDays)
                 {
-                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов   ");
-                    foreach (var oldFolder in dailyFolders.Skip(30))
+                    logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаление старых бэкапов (хранится {keepDays} дн.)");
+                    foreach (var oldFolder in dailyFolders.Skip(keepDays))
                     {
                         logger?.Invoke($"[{DateTime.Now:HH:mm:ss}] Удаляем: {oldFolder.Name}");
                         try
                         {
-                            foreach (var file in Directory.GetFiles(oldFolder.FullName, "*", SearchOption.AllDirectories))
-                                File.SetAttributes(file, FileAttributes.Normal);
+                            foreach (var file in Directory.EnumerateFiles(oldFolder.FullName, "*", SearchOption.AllDirectories))
+                                try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
+
                             Directory.Delete(oldFolder.FullName, true);
                         }
                         catch (Exception ex)
@@ -360,15 +387,6 @@ namespace AutoSaver
                 }
             }
 
-            private static void ClearDirectory(string path)
-            {
-            if (!Directory.Exists(path)) return;
-
-                DirectoryInfo di = new DirectoryInfo(path);
-                foreach (FileInfo file in di.GetFiles()) file.Delete();
-                foreach (DirectoryInfo dir in di.GetDirectories()) dir.Delete(true);
-            }
-
         private static string FormatSize(long bytes)
         {
             double gb = bytes / 1024.0 / 1024.0 / 1024.0;
@@ -378,5 +396,40 @@ namespace AutoSaver
         }
 
 
+        private static IEnumerable<string> SafeEnumerateFiles(string root)
+        {
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true
+            };
+            return Directory.EnumerateFiles(root, "*", options);
+        }
+
+        private static void CopyFileShared(string source, string dest)
+        {
+            using (var src = new FileStream(source, FileMode.Open, FileAccess.Read,
+                                            FileShare.ReadWrite | FileShare.Delete))
+            {
+                if (File.Exists(dest))
+                    File.SetAttributes(dest, FileAttributes.Normal);
+
+                using (var dst = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None))
+                    src.CopyTo(dst, 1024 * 1024);
+            }
+            File.SetLastWriteTime(dest, File.GetLastWriteTime(source));
+        }
+
+        private static bool IsSameFile(FileInfo src, string dest)
+        {
+            var d = new FileInfo(dest);
+            return d.Exists
+                && d.Length == src.Length
+                && Math.Abs((d.LastWriteTime - src.LastWriteTime).TotalSeconds) < 2;
+        }
+
     }
+
+
+
     }

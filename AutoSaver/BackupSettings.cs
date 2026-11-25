@@ -21,5 +21,11 @@ namespace AutoSaver
         // Когда в последний раз делали ежедневный инкремент
         public DateTime LastDailyBackupDate { get; set; }
 
+        // День месяца для полного бэкапа (1-31)
+        public int FullBackupDay { get; set; } = 1;
+
+        // Сколько дней хранить ежедневные копии
+        public int DailyRetentionDays { get; set; } = 30;
+
     }
 }

@@ -85,8 +85,9 @@
         </StackPanel>
 
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="BtnSave" Content="Сохранить настройки" Width="140" Height="30" Margin="0,0,10,0" Click="BtnSave_Click"/>
-            <Button x:Name="BtnRunNow" Content="Запустить сейчас" Width="120" Height="30" Background="#E1F5FE" Click="BtnRunNow_Click"/>
+            <Button x:Name="BtnSettings" Content="Настройки ⚙️" Width="110" Height="30" Margin="0,0,10,0" Click="BtnSettings_Click" Background="FloralWhite"/>
+            <Button x:Name="BtnSave" Content="Сохранить настройки" Width="140" Height="30" Margin="0,0,10,0" Click="BtnSave_Click" Background="LightGreen"/>
+            <Button x:Name="BtnRunNow" Content="Запустить сейчас" Width="120" Height="30" Click="BtnRunNow_Click" Background="LightGreen"/>
         </StackPanel>
 
     </Grid>
